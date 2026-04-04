@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+
+  --color-warm-50: #fefce8;
+  --color-warm-100: #fef9c3;
+  --color-warm-200: #fef08a;
+  --color-warm-500: #eab308;
+
+  --color-success-50: #f0fdf4;
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+
+  --color-danger-50: #fef2f2;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, #faf5ff 100%);
+  min-height: 100vh;
+}
+
+.card {
+  @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-6;
+}
+
+.btn-primary {
+  @apply bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2.5 px-6 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md;
+}
+
+.btn-secondary {
+  @apply bg-white hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-6 rounded-xl transition-all duration-200 border border-gray-200;
+}
+
+.btn-danger {
+  @apply bg-danger-500 hover:bg-danger-600 text-white font-semibold py-2.5 px-6 rounded-xl transition-all duration-200;
+}
+
+.input-field {
+  @apply w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all duration-200 bg-white;
+}
+
+.slider-emotion {
+  @apply w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer;
+}
+
+.slider-emotion::-webkit-slider-thumb {
+  @apply appearance-none w-6 h-6 bg-primary-500 rounded-full cursor-pointer shadow-md;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
