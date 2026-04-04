@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { ensureInitialized } from '@/lib/db'
 import { getUserByEmail } from '@/lib/users'
 import { createMagicToken } from '@/lib/auth'
 import { buildMagicLink } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureInitialized()
     const { email } = await request.json()
 
     if (!email) {

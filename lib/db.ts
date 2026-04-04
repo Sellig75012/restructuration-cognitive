@@ -6,6 +6,20 @@ const pool = new Pool({
 
 export default pool
 
+let initialized = false
+
+export async function ensureInitialized() {
+  if (initialized) return
+  try {
+    await pool.query('SELECT 1 FROM users LIMIT 1')
+    initialized = true
+  } catch {
+    await initDatabase()
+    await seedAdmin()
+    initialized = true
+  }
+}
+
 export async function initDatabase() {
   const client = await pool.connect()
   try {
@@ -79,6 +93,6 @@ export async function seedAdmin() {
     `INSERT INTO users (email, name, role, status, permitted_exercises)
      VALUES ($1, 'Administrateur', 'admin', 'active', $2)
      ON CONFLICT (email) DO NOTHING`,
-    [adminEmail, ['restructuration-cognitive']]
+    [adminEmail, ['restructuration-cognitive', 'echelle-rathus']]
   )
 }
