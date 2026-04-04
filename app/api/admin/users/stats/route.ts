@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/get-user'
 import { getFichesForAdmin } from '@/lib/fiches'
+import { getRathusForAdmin } from '@/lib/rathus-db'
 import { getAllUsers } from '@/lib/users'
 
 export async function GET() {
@@ -9,17 +10,21 @@ export async function GET() {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
   }
 
-  const [users, stats] = await Promise.all([
+  const [users, ficheStats, rathusStats] = await Promise.all([
     getAllUsers(),
     getFichesForAdmin(),
+    getRathusForAdmin(),
   ])
 
   const userStats = users.map(user => {
-    const s = stats.find(st => st.email === user.email)
+    const fs = ficheStats.find(st => st.email === user.email)
+    const rs = rathusStats.find(st => st.email === user.email)
     return {
       ...user,
-      fiches_count: s ? Number(s.count) : 0,
-      last_entry: s?.last_entry || null,
+      fiches_count: fs ? Number(fs.count) : 0,
+      last_fiche: fs?.last_entry || null,
+      rathus_count: rs ? Number(rs.count) : 0,
+      last_rathus: rs?.last_entry || null,
     }
   })
 

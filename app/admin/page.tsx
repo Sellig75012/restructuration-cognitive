@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Navbar from '@/components/Navbar'
 import { DISTORSIONS } from '@/lib/distorsions'
 import { EXERCISES } from '@/lib/exercises'
+import { interpretRathusScore } from '@/lib/rathus'
 
 interface UserWithStats {
   id: number
@@ -14,7 +15,9 @@ interface UserWithStats {
   permitted_exercises: string[]
   created_at: string
   fiches_count: number
-  last_entry: string | null
+  last_fiche: string | null
+  rathus_count: number
+  last_rathus: string | null
 }
 
 interface Fiche {
@@ -33,6 +36,13 @@ interface Fiche {
   notes: string
 }
 
+interface RathusEntry {
+  id: number
+  date: string
+  score: number
+  notes: string
+}
+
 export default function AdminPage() {
   const [users, setUsers] = useState<UserWithStats[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,7 +53,9 @@ export default function AdminPage() {
   const [newExercises, setNewExercises] = useState<string[]>([])
   const [creating, setCreating] = useState(false)
   const [selectedUser, setSelectedUser] = useState<string | null>(null)
+  const [selectedTab, setSelectedTab] = useState<'fiches' | 'rathus'>('fiches')
   const [userFiches, setUserFiches] = useState<Fiche[]>([])
+  const [userRathus, setUserRathus] = useState<RathusEntry[]>([])
   const [loadingFiches, setLoadingFiches] = useState(false)
   const [magicLinks, setMagicLinks] = useState<Record<string, string>>({})
   const [generatingLink, setGeneratingLink] = useState<string | null>(null)
@@ -130,15 +142,22 @@ export default function AdminPage() {
     setTimeout(() => setCopiedLink(null), 2000)
   }
 
-  const viewFiches = async (email: string) => {
-    if (selectedUser === email) {
+  const viewUserData = async (email: string, tab: 'fiches' | 'rathus') => {
+    if (selectedUser === email && selectedTab === tab) {
       setSelectedUser(null)
       return
     }
     setSelectedUser(email)
+    setSelectedTab(tab)
     setLoadingFiches(true)
-    const res = await fetch(`/api/admin/fiches?email=${encodeURIComponent(email)}`)
-    if (res.ok) setUserFiches(await res.json())
+
+    if (tab === 'fiches') {
+      const res = await fetch(`/api/admin/fiches?email=${encodeURIComponent(email)}`)
+      if (res.ok) setUserFiches(await res.json())
+    } else {
+      const res = await fetch(`/api/admin/rathus?email=${encodeURIComponent(email)}`)
+      if (res.ok) setUserRathus(await res.json())
+    }
     setLoadingFiches(false)
   }
 
@@ -256,6 +275,11 @@ export default function AdminPage() {
                     <span className="text-sm font-medium text-primary-600">
                       {user.fiches_count} fiche{user.fiches_count > 1 ? 's' : ''}
                     </span>
+                    {user.rathus_count > 0 && (
+                      <span className="text-sm font-medium text-blue-600">
+                        {user.rathus_count} Rathus
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -345,20 +369,29 @@ export default function AdminPage() {
                   {user.fiches_count > 0 && (
                     <button
                       type="button"
-                      onClick={() => viewFiches(user.email)}
+                      onClick={() => viewUserData(user.email, 'fiches')}
                       className="text-sm text-primary-500 font-medium hover:underline ml-auto"
                     >
-                      {selectedUser === user.email ? 'Masquer les fiches' : 'Voir les fiches'}
+                      {selectedUser === user.email && selectedTab === 'fiches' ? 'Masquer' : 'Voir les fiches'}
+                    </button>
+                  )}
+                  {user.rathus_count > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => viewUserData(user.email, 'rathus')}
+                      className="text-sm text-blue-500 font-medium hover:underline"
+                    >
+                      {selectedUser === user.email && selectedTab === 'rathus' ? 'Masquer' : 'Voir Rathus'}
                     </button>
                   )}
                 </div>
 
-                {/* User fiches */}
+                {/* User data */}
                 {selectedUser === user.email && (
                   <div className="mt-4 pt-4 border-t border-gray-100 animate-fade-in">
                     {loadingFiches ? (
                       <p className="text-gray-400 text-sm">Chargement...</p>
-                    ) : (
+                    ) : selectedTab === 'fiches' ? (
                       <div className="space-y-3">
                         <h4 className="font-medium text-gray-700">Fiches de {user.name || user.email}</h4>
                         {userFiches.map(fiche => (
@@ -395,6 +428,37 @@ export default function AdminPage() {
                             )}
                           </div>
                         ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-gray-700">Résultats Rathus de {user.name || user.email}</h4>
+                        {userRathus.map(entry => {
+                          const interp = interpretRathusScore(entry.score)
+                          return (
+                            <div key={entry.id} className="bg-gray-50 rounded-xl p-4 flex items-center gap-4">
+                              <div
+                                className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0"
+                                style={{ backgroundColor: interp.couleur }}
+                              >
+                                {entry.score > 0 ? `+${entry.score}` : entry.score}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-sm text-gray-400 font-mono">
+                                    {new Date(entry.date).toLocaleDateString('fr-FR')}
+                                  </span>
+                                  <span className="text-xs font-semibold" style={{ color: interp.couleur }}>
+                                    {interp.niveau}
+                                  </span>
+                                </div>
+                                <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                  <div className="h-full rounded-full" style={{ width: `${((entry.score + 90) / 180) * 100}%`, backgroundColor: interp.couleur }} />
+                                </div>
+                                {entry.notes && <p className="text-xs text-gray-500 mt-1">{entry.notes}</p>}
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </div>

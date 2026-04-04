@@ -56,6 +56,17 @@ export async function initDatabase() {
         updated_at TIMESTAMP DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS idx_fiches_owner ON fiches(owner_email);
+
+      CREATE TABLE IF NOT EXISTS rathus_responses (
+        id SERIAL PRIMARY KEY,
+        owner_email TEXT NOT NULL,
+        date DATE NOT NULL DEFAULT CURRENT_DATE,
+        responses JSONB NOT NULL DEFAULT '{}',
+        score INTEGER NOT NULL DEFAULT 0,
+        notes TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_rathus_owner ON rathus_responses(owner_email);
     `)
   } finally {
     client.release()

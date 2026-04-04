@@ -12,13 +12,12 @@ export const EXERCISES: Exercise[] = [
     description: 'Tableau en 4 étapes pour identifier et modifier les pensées dysfonctionnelles',
     icone: '🧠',
   },
-  // Les futurs exercices seront ajoutés ici
-  // {
-  //   slug: 'exposition-progressive',
-  //   nom: 'Exposition Progressive',
-  //   description: 'Hiérarchie des situations anxiogènes et progression',
-  //   icone: '🪜',
-  // },
+  {
+    slug: 'echelle-rathus',
+    nom: 'Échelle de Rathus',
+    description: "Échelle d'affirmation de soi - 30 affirmations pour mesurer votre degré d'assertivité",
+    icone: '💪',
+  },
 ]
 
 export function getExerciseBySlug(slug: string): Exercise | undefined {

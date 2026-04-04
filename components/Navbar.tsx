@@ -36,6 +36,7 @@ export default function Navbar() {
     { href: '/dashboard', label: 'Mes fiches', icon: '📋', visible: hasExercise('restructuration-cognitive') },
     { href: '/fiche', label: 'Nouvelle fiche', icon: '✏️', visible: hasExercise('restructuration-cognitive') },
     { href: '/distorsions', label: 'Distorsions', icon: '🧠', visible: hasExercise('restructuration-cognitive') },
+    { href: '/rathus', label: 'Échelle Rathus', icon: '💪', visible: hasExercise('echelle-rathus') },
   ]
 
   if (user?.role === 'admin') {
