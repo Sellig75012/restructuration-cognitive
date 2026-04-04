@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/get-user'
-import { getAllFiches, createFiche, updateFiche, deleteFiche, getFicheById } from '@/lib/fiches'
+import { getUserByEmail } from '@/lib/users'
+import { getAllFiches, createFiche, updateFiche, deleteFiche } from '@/lib/fiches'
+
+const EXERCISE_SLUG = 'restructuration-cognitive'
+
+async function checkExerciseAccess(email: string, role: string): Promise<boolean> {
+  if (role === 'admin') return true
+  const user = await getUserByEmail(email)
+  return user?.permitted_exercises?.includes(EXERCISE_SLUG) ?? false
+}
 
 export async function GET() {
   const auth = await getUserFromRequest()
   if (!auth) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  }
+
+  if (!await checkExerciseAccess(auth.email, auth.role)) {
+    return NextResponse.json({ error: 'Accès non autorisé à cet exercice' }, { status: 403 })
   }
 
   const fiches = await getAllFiches(auth.email)
@@ -18,6 +31,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   }
 
+  if (!await checkExerciseAccess(auth.email, auth.role)) {
+    return NextResponse.json({ error: 'Accès non autorisé à cet exercice' }, { status: 403 })
+  }
+
   const data = await request.json()
   const fiche = await createFiche(auth.email, data)
   return NextResponse.json(fiche)
@@ -27,6 +44,10 @@ export async function PUT(request: NextRequest) {
   const auth = await getUserFromRequest()
   if (!auth) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  }
+
+  if (!await checkExerciseAccess(auth.email, auth.role)) {
+    return NextResponse.json({ error: 'Accès non autorisé à cet exercice' }, { status: 403 })
   }
 
   const data = await request.json()

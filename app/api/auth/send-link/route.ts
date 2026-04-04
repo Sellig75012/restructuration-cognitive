@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserByEmail } from '@/lib/users'
 import { createMagicToken } from '@/lib/auth'
-import { sendMagicLink } from '@/lib/email'
+import { buildMagicLink } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,19 +13,16 @@ export async function POST(request: NextRequest) {
 
     const user = await getUserByEmail(email.toLowerCase().trim())
 
-    if (!user) {
-      // Don't reveal if user exists
-      return NextResponse.json({ ok: true, message: 'Si ce compte existe, un lien de connexion a été envoyé.' })
-    }
-
-    if (user.status !== 'active') {
-      return NextResponse.json({ ok: true, message: 'Si ce compte existe, un lien de connexion a été envoyé.' })
+    if (!user || user.status !== 'active') {
+      // Don't reveal if user exists - show generic message
+      return NextResponse.json({ ok: true, message: 'Si ce compte existe, un lien de connexion a été généré. Contactez votre administrateur.' })
     }
 
     const token = await createMagicToken(user.email)
-    await sendMagicLink(user.email, token)
+    const link = buildMagicLink(token)
 
-    return NextResponse.json({ ok: true, message: 'Si ce compte existe, un lien de connexion a été envoyé.' })
+    // Return the link directly (internal magic link)
+    return NextResponse.json({ ok: true, link, message: 'Lien de connexion généré.' })
   } catch (error) {
     console.error('Send link error:', error)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

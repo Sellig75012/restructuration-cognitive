@@ -16,9 +16,16 @@ export async function initDatabase() {
         name TEXT DEFAULT '',
         role TEXT NOT NULL DEFAULT 'user',
         status TEXT NOT NULL DEFAULT 'pending',
+        permitted_exercises TEXT[] DEFAULT '{}',
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       );
+
+      -- Migration: add permitted_exercises if missing
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS permitted_exercises TEXT[] DEFAULT '{}';
+      EXCEPTION WHEN duplicate_column THEN NULL;
+      END $$;
 
       CREATE TABLE IF NOT EXISTS magic_tokens (
         id SERIAL PRIMARY KEY,
@@ -49,11 +56,6 @@ export async function initDatabase() {
         updated_at TIMESTAMP DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS idx_fiches_owner ON fiches(owner_email);
-
-      -- Seed admin from env
-      INSERT INTO users (email, name, role, status)
-      VALUES (COALESCE(NULLIF(current_setting('app.admin_email', true), ''), 'admin@stenthiit.fr'), 'Administrateur', 'admin', 'active')
-      ON CONFLICT (email) DO NOTHING;
     `)
   } finally {
     client.release()
@@ -63,9 +65,9 @@ export async function initDatabase() {
 export async function seedAdmin() {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@stenthiit.fr'
   await pool.query(
-    `INSERT INTO users (email, name, role, status)
-     VALUES ($1, 'Administrateur', 'admin', 'active')
+    `INSERT INTO users (email, name, role, status, permitted_exercises)
+     VALUES ($1, 'Administrateur', 'admin', 'active', $2)
      ON CONFLICT (email) DO NOTHING`,
-    [adminEmail]
+    [adminEmail, ['restructuration-cognitive']]
   )
 }

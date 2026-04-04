@@ -6,6 +6,7 @@ export interface User {
   name: string
   role: string
   status: string
+  permitted_exercises: string[]
   created_at: string
   updated_at: string
 }
@@ -20,22 +21,23 @@ export async function getAllUsers(): Promise<User[]> {
   return result.rows
 }
 
-export async function createUser(email: string, name: string, role: string = 'user'): Promise<User> {
+export async function createUser(email: string, name: string, role: string = 'user', permittedExercises: string[] = []): Promise<User> {
   const result = await pool.query(
-    `INSERT INTO users (email, name, role, status) VALUES ($1, $2, $3, 'active') RETURNING *`,
-    [email, name, role]
+    `INSERT INTO users (email, name, role, status, permitted_exercises) VALUES ($1, $2, $3, 'active', $4) RETURNING *`,
+    [email, name, role, permittedExercises]
   )
   return result.rows[0]
 }
 
-export async function updateUser(id: number, data: { name?: string; role?: string; status?: string }): Promise<User | null> {
+export async function updateUser(id: number, data: { name?: string; role?: string; status?: string; permitted_exercises?: string[] }): Promise<User | null> {
   const fields: string[] = []
-  const values: (string | number)[] = []
+  const values: (string | number | string[])[] = []
   let i = 1
 
   if (data.name !== undefined) { fields.push(`name = $${i++}`); values.push(data.name) }
   if (data.role !== undefined) { fields.push(`role = $${i++}`); values.push(data.role) }
   if (data.status !== undefined) { fields.push(`status = $${i++}`); values.push(data.status) }
+  if (data.permitted_exercises !== undefined) { fields.push(`permitted_exercises = $${i++}`); values.push(data.permitted_exercises) }
   fields.push(`updated_at = NOW()`)
 
   if (fields.length === 1) return null

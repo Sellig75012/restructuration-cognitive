@@ -4,7 +4,8 @@
       "Bash(find /Users/gillescalma/Documents/GitHub/nassim-suivi -name .env* -type f)",
       "Bash(grep -r \"ADMIN_EMAIL\\\\|admin@\\\\|archikeo\" /Users/gillescalma/Documents/GitHub/nassim-suivi/lib /Users/gillescalma/Documents/GitHub/nassim-suivi/app --include=*.ts --include=*.tsx)",
       "Bash(npm install:*)",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(gh repo:*)"
     ]
   }
 }

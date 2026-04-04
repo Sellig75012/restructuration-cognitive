@@ -18,13 +18,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
   }
 
-  const { email, name, role } = await request.json()
+  const { email, name, role, permitted_exercises } = await request.json()
   if (!email) {
     return NextResponse.json({ error: 'Email requis' }, { status: 400 })
   }
 
   try {
-    const user = await createUser(email.toLowerCase().trim(), name || '', role || 'user')
+    const user = await createUser(email.toLowerCase().trim(), name || '', role || 'user', permitted_exercises || [])
     return NextResponse.json(user)
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error)
@@ -41,12 +41,12 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
   }
 
-  const { id, name, role, status } = await request.json()
+  const { id, name, role, status, permitted_exercises } = await request.json()
   if (!id) {
     return NextResponse.json({ error: 'ID requis' }, { status: 400 })
   }
 
-  const user = await updateUser(id, { name, role, status })
+  const user = await updateUser(id, { name, role, status, permitted_exercises })
   if (!user) {
     return NextResponse.json({ error: 'Utilisateur introuvable' }, { status: 404 })
   }

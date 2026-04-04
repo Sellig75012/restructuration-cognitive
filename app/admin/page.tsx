@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Navbar from '@/components/Navbar'
 import { DISTORSIONS } from '@/lib/distorsions'
+import { EXERCISES } from '@/lib/exercises'
 
 interface UserWithStats {
   id: number
@@ -10,6 +11,7 @@ interface UserWithStats {
   name: string
   role: string
   status: string
+  permitted_exercises: string[]
   created_at: string
   fiches_count: number
   last_entry: string | null
@@ -38,11 +40,14 @@ export default function AdminPage() {
   const [newEmail, setNewEmail] = useState('')
   const [newName, setNewName] = useState('')
   const [newRole, setNewRole] = useState('user')
+  const [newExercises, setNewExercises] = useState<string[]>([])
   const [creating, setCreating] = useState(false)
   const [selectedUser, setSelectedUser] = useState<string | null>(null)
   const [userFiches, setUserFiches] = useState<Fiche[]>([])
   const [loadingFiches, setLoadingFiches] = useState(false)
-  const [editingUser, setEditingUser] = useState<number | null>(null)
+  const [magicLinks, setMagicLinks] = useState<Record<string, string>>({})
+  const [generatingLink, setGeneratingLink] = useState<string | null>(null)
+  const [copiedLink, setCopiedLink] = useState<string | null>(null)
 
   const loadUsers = async () => {
     const res = await fetch('/api/admin/users/stats')
@@ -58,12 +63,13 @@ export default function AdminPage() {
     const res = await fetch('/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: newEmail, name: newName, role: newRole }),
+      body: JSON.stringify({ email: newEmail, name: newName, role: newRole, permitted_exercises: newExercises }),
     })
     if (res.ok) {
       setNewEmail('')
       setNewName('')
       setNewRole('user')
+      setNewExercises([])
       setShowCreate(false)
       loadUsers()
     } else {
@@ -91,6 +97,39 @@ export default function AdminPage() {
     loadUsers()
   }
 
+  const toggleExercise = async (userId: number, exerciseSlug: string, current: string[]) => {
+    const updated = current.includes(exerciseSlug)
+      ? current.filter(e => e !== exerciseSlug)
+      : [...current, exerciseSlug]
+
+    await fetch('/api/admin/users', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: userId, permitted_exercises: updated }),
+    })
+    loadUsers()
+  }
+
+  const generateMagicLink = async (email: string) => {
+    setGeneratingLink(email)
+    const res = await fetch('/api/admin/magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setMagicLinks(prev => ({ ...prev, [email]: data.link }))
+    }
+    setGeneratingLink(null)
+  }
+
+  const copyLink = async (email: string, link: string) => {
+    await navigator.clipboard.writeText(link)
+    setCopiedLink(email)
+    setTimeout(() => setCopiedLink(null), 2000)
+  }
+
   const viewFiches = async (email: string) => {
     if (selectedUser === email) {
       setSelectedUser(null)
@@ -112,6 +151,12 @@ export default function AdminPage() {
     }
   }
 
+  const toggleNewExercise = (slug: string) => {
+    setNewExercises(prev =>
+      prev.includes(slug) ? prev.filter(e => e !== slug) : [...prev, slug]
+    )
+  }
+
   return (
     <>
       <Navbar />
@@ -121,7 +166,7 @@ export default function AdminPage() {
             <h1 className="text-2xl font-bold text-gray-900">Administration</h1>
             <p className="text-gray-500">{users.length} utilisateur{users.length > 1 ? 's' : ''}</p>
           </div>
-          <button onClick={() => setShowCreate(!showCreate)} className="btn-primary">
+          <button type="button" onClick={() => setShowCreate(!showCreate)} className="btn-primary">
             + Nouvel utilisateur
           </button>
         </div>
@@ -130,32 +175,55 @@ export default function AdminPage() {
         {showCreate && (
           <div className="card mb-6 animate-fade-in">
             <h2 className="font-semibold text-gray-900 mb-4">Créer un utilisateur</h2>
-            <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <input
-                type="email"
-                value={newEmail}
-                onChange={e => setNewEmail(e.target.value)}
-                placeholder="Email"
-                className="input-field"
-                required
-              />
-              <input
-                type="text"
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                placeholder="Nom"
-                className="input-field"
-              />
-              <select
-                value={newRole}
-                onChange={e => setNewRole(e.target.value)}
-                className="input-field"
-              >
-                <option value="user">Utilisateur</option>
-                <option value="admin">Administrateur</option>
-              </select>
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={e => setNewEmail(e.target.value)}
+                  placeholder="Email"
+                  className="input-field"
+                  required
+                />
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  placeholder="Nom"
+                  className="input-field"
+                />
+                <select
+                  value={newRole}
+                  onChange={e => setNewRole(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="user">Utilisateur</option>
+                  <option value="admin">Administrateur</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Exercices autorisés</label>
+                <div className="flex flex-wrap gap-2">
+                  {EXERCISES.map(ex => (
+                    <button
+                      key={ex.slug}
+                      type="button"
+                      onClick={() => toggleNewExercise(ex.slug)}
+                      className={`px-3 py-2 rounded-xl text-sm font-medium transition-all border ${
+                        newExercises.includes(ex.slug)
+                          ? 'bg-primary-50 border-primary-300 text-primary-700'
+                          : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                      }`}
+                    >
+                      {ex.icone} {ex.nom}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <button type="submit" disabled={creating} className="btn-primary disabled:opacity-50">
-                {creating ? 'Création...' : 'Créer'}
+                {creating ? 'Création...' : 'Créer l\'utilisateur'}
               </button>
             </form>
           </div>
@@ -167,7 +235,7 @@ export default function AdminPage() {
           <div className="space-y-4">
             {users.map(user => (
               <div key={user.id} className="card animate-fade-in">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold">
                       {(user.name || user.email).charAt(0).toUpperCase()}
@@ -191,33 +259,92 @@ export default function AdminPage() {
                   </div>
                 </div>
 
+                {/* Exercices permis */}
+                <div className="mt-4 pt-4 border-t border-gray-50">
+                  <p className="text-xs font-medium text-gray-500 mb-2">Exercices autorisés :</p>
+                  <div className="flex flex-wrap gap-2">
+                    {EXERCISES.map(ex => {
+                      const isPermitted = user.permitted_exercises?.includes(ex.slug)
+                      return (
+                        <button
+                          key={ex.slug}
+                          type="button"
+                          onClick={() => toggleExercise(user.id, ex.slug, user.permitted_exercises || [])}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                            isPermitted
+                              ? 'bg-primary-50 border-primary-300 text-primary-700'
+                              : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300'
+                          }`}
+                        >
+                          {ex.icone} {ex.nom} {isPermitted ? '✓' : ''}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Magic link */}
+                {user.status === 'active' && (
+                  <div className="mt-3 pt-3 border-t border-gray-50">
+                    {magicLinks[user.email] ? (
+                      <div className="flex items-center gap-2 animate-fade-in">
+                        <input
+                          type="text"
+                          value={magicLinks[user.email]}
+                          readOnly
+                          className="input-field text-xs font-mono flex-1"
+                          onClick={e => (e.target as HTMLInputElement).select()}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => copyLink(user.email, magicLinks[user.email])}
+                          className="btn-secondary text-xs whitespace-nowrap"
+                        >
+                          {copiedLink === user.email ? '✓ Copié' : '📋 Copier'}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => generateMagicLink(user.email)}
+                        disabled={generatingLink === user.email}
+                        className="text-sm text-primary-500 font-medium hover:underline disabled:opacity-50"
+                      >
+                        {generatingLink === user.email ? 'Génération...' : '🔗 Générer un lien de connexion'}
+                      </button>
+                    )}
+                    <p className="text-xs text-gray-400 mt-1">Le lien expire dans 15 minutes</p>
+                  </div>
+                )}
+
                 {/* Actions */}
-                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-50">
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50">
                   {user.status === 'pending' && (
                     <>
-                      <button onClick={() => handleStatusChange(user.id, 'active')} className="text-sm text-green-600 font-medium hover:underline">
+                      <button type="button" onClick={() => handleStatusChange(user.id, 'active')} className="text-sm text-green-600 font-medium hover:underline">
                         Approuver
                       </button>
-                      <button onClick={() => handleStatusChange(user.id, 'rejected')} className="text-sm text-red-600 font-medium hover:underline">
+                      <button type="button" onClick={() => handleStatusChange(user.id, 'rejected')} className="text-sm text-red-600 font-medium hover:underline">
                         Rejeter
                       </button>
                     </>
                   )}
                   {user.status === 'active' && user.role !== 'admin' && (
-                    <button onClick={() => handleStatusChange(user.id, 'rejected')} className="text-sm text-red-500 hover:underline">
+                    <button type="button" onClick={() => handleStatusChange(user.id, 'rejected')} className="text-sm text-red-500 hover:underline">
                       Désactiver
                     </button>
                   )}
                   {user.status === 'rejected' && (
-                    <button onClick={() => handleStatusChange(user.id, 'active')} className="text-sm text-green-600 hover:underline">
+                    <button type="button" onClick={() => handleStatusChange(user.id, 'active')} className="text-sm text-green-600 hover:underline">
                       Réactiver
                     </button>
                   )}
-                  <button onClick={() => handleRoleChange(user.id, user.role === 'admin' ? 'user' : 'admin')} className="text-sm text-gray-500 hover:underline ml-2">
+                  <button type="button" onClick={() => handleRoleChange(user.id, user.role === 'admin' ? 'user' : 'admin')} className="text-sm text-gray-500 hover:underline ml-2">
                     {user.role === 'admin' ? 'Rétrograder' : 'Promouvoir admin'}
                   </button>
                   {user.fiches_count > 0 && (
                     <button
+                      type="button"
                       onClick={() => viewFiches(user.email)}
                       className="text-sm text-primary-500 font-medium hover:underline ml-auto"
                     >

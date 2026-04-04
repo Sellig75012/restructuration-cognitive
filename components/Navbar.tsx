@@ -4,10 +4,17 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 
+interface UserInfo {
+  email: string
+  name: string
+  role: string
+  permitted_exercises: string[]
+}
+
 export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
-  const [user, setUser] = useState<{ email: string; name: string; role: string } | null>(null)
+  const [user, setUser] = useState<UserInfo | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
@@ -22,15 +29,20 @@ export default function Navbar() {
     router.push('/login')
   }
 
-  const links = [
-    { href: '/dashboard', label: 'Mes fiches', icon: '📋' },
-    { href: '/fiche', label: 'Nouvelle fiche', icon: '✏️' },
-    { href: '/distorsions', label: 'Distorsions', icon: '🧠' },
+  const hasExercise = (slug: string): boolean =>
+    user?.role === 'admin' || user?.permitted_exercises?.includes(slug) || false
+
+  const links: { href: string; label: string; icon: string; visible: boolean }[] = [
+    { href: '/dashboard', label: 'Mes fiches', icon: '📋', visible: hasExercise('restructuration-cognitive') },
+    { href: '/fiche', label: 'Nouvelle fiche', icon: '✏️', visible: hasExercise('restructuration-cognitive') },
+    { href: '/distorsions', label: 'Distorsions', icon: '🧠', visible: hasExercise('restructuration-cognitive') },
   ]
 
   if (user?.role === 'admin') {
-    links.push({ href: '/admin', label: 'Administration', icon: '⚙️' })
+    links.push({ href: '/admin', label: 'Administration', icon: '⚙️', visible: true })
   }
+
+  const visibleLinks = links.filter(l => l.visible)
 
   return (
     <nav className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
@@ -43,7 +55,7 @@ export default function Navbar() {
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-1">
-            {links.map(link => (
+            {visibleLinks.map(link => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -84,7 +96,7 @@ export default function Navbar() {
         {/* Mobile menu */}
         {menuOpen && (
           <div className="md:hidden pb-4 animate-fade-in">
-            {links.map(link => (
+            {visibleLinks.map(link => (
               <Link
                 key={link.href}
                 href={link.href}
