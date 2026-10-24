@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/get-user'
 import { getAllUsers, createUser, updateUser, deleteUser } from '@/lib/users'
 
+const ROLES = ['admin', 'user']
+const STATUTS = ['active', 'pending', 'rejected']
+
 export async function GET() {
   const auth = await getUserFromRequest()
   if (!auth || auth.role !== 'admin') {
@@ -19,8 +22,11 @@ export async function POST(request: NextRequest) {
   }
 
   const { email, name, role, permitted_exercises } = await request.json()
-  if (!email) {
+  if (!email || typeof email !== 'string') {
     return NextResponse.json({ error: 'Email requis' }, { status: 400 })
+  }
+  if (role !== undefined && !ROLES.includes(role)) {
+    return NextResponse.json({ error: 'Rôle invalide' }, { status: 400 })
   }
 
   try {
@@ -44,6 +50,12 @@ export async function PUT(request: NextRequest) {
   const { id, name, role, status, permitted_exercises } = await request.json()
   if (!id) {
     return NextResponse.json({ error: 'ID requis' }, { status: 400 })
+  }
+  if (role !== undefined && !ROLES.includes(role)) {
+    return NextResponse.json({ error: 'Rôle invalide' }, { status: 400 })
+  }
+  if (status !== undefined && !STATUTS.includes(status)) {
+    return NextResponse.json({ error: 'Statut invalide' }, { status: 400 })
   }
 
   const user = await updateUser(id, { name, role, status, permitted_exercises })

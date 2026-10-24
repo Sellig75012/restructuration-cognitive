@@ -2,15 +2,24 @@ import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
 import pool from './db'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'restructuration-cognitive-secret-change-me'
+// Le secret n'a pas de valeur de repli : un secret par défaut connu de tous
+// permettrait de forger un jeton administrateur. L'erreur est levée à l'usage
+// (pas au chargement du module) pour ne pas casser le build.
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET
+  if (!secret || secret === 'restructuration-cognitive-secret-change-me' || secret === 'change-me-to-a-secure-random-string') {
+    throw new Error('JWT_SECRET manquant ou laissé à sa valeur d\'exemple : générer un secret aléatoire (openssl rand -base64 32)')
+  }
+  return secret
+}
 
 export function signToken(payload: { email: string; role: string }): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' })
+  return jwt.sign(payload, getJwtSecret(), { algorithm: 'HS256', expiresIn: '7d' })
 }
 
 export function verifyToken(token: string): { email: string; role: string } | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as { email: string; role: string }
+    return jwt.verify(token, getJwtSecret(), { algorithms: ['HS256'] }) as { email: string; role: string }
   } catch {
     return null
   }
@@ -29,18 +38,15 @@ export async function createMagicToken(email: string): Promise<string> {
 }
 
 export async function verifyMagicToken(token: string): Promise<string | null> {
+  // Marquage atomique : deux requêtes concurrentes avec le même lien ne peuvent
+  // pas toutes deux obtenir une session.
   const result = await pool.query(
-    `SELECT email, expires_at, used FROM magic_tokens WHERE token = $1`,
+    `UPDATE magic_tokens SET used = 1
+     WHERE token = $1 AND used = 0 AND expires_at > NOW()
+     RETURNING email`,
     [token]
   )
 
   if (result.rows.length === 0) return null
-
-  const row = result.rows[0]
-  if (row.used === 1) return null
-  if (new Date(row.expires_at) < new Date()) return null
-
-  await pool.query(`UPDATE magic_tokens SET used = 1 WHERE token = $1`, [token])
-
-  return row.email
+  return result.rows[0].email
 }
